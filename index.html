@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kosztorys Budowy</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --border: #2e2e2e;
+    --accent: #e8c547;
+    --accent2: #c9a227;
+    --text: #f0ede8;
+    --muted: #888;
+    --danger: #e05555;
+    --success: #5aad7a;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .logo { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.5px; display: flex; align-items: center; gap: 8px; }
+  .logo-icon { font-size: 1.4rem; }
+  .logo-text span { color: var(--accent); }
+  .header-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  /* SYNC STATUS */
+  .sync-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    background: var(--surface2);
+  }
+  .sync-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+  }
+  .sync-dot.connected { background: var(--success); box-shadow: 0 0 6px var(--success); }
+  .sync-dot.syncing { background: var(--accent); animation: pulse 1s infinite; }
+  .sync-dot.error { background: var(--danger); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .btn {
+    padding: 9px 18px;
+    border-radius: var(--radius);
+    border: none;
+    cursor: pointer;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--accent); color: #111; }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+  .btn-success { background: #1a2e22; color: var(--success); border: 1px solid #2a4a32; }
+  .btn-success:hover { background: #2a4a32; }
+  .btn-danger { background: #2a1a1a; color: var(--danger); border: 1px solid #3a1a1a; }
+  .btn-danger:hover { background: #3a1a1a; }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px; }
+  .card-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-family: 'DM Mono', monospace; }
+  .card-value { font-size: 1.6rem; font-weight: 800; font-family: 'DM Mono', monospace; letter-spacing: -1px; }
+  .card-value.accent { color: var(--accent); }
+  .card-value.danger { color: var(--danger); }
+  .card-value.success { color: var(--success); }
+  .card-sub { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+  .progress-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 32px; }
+  .progress-header { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 0.85rem; }
+  .progress-bar-bg { height: 10px; background: var(--border); border-radius: 99px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent)); border-radius: 99px; transition: width 0.5s ease; }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tab {
+    padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); font-family: 'Syne', sans-serif;
+    font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .tab .count { background: var(--border); color: var(--muted); font-size: 0.7rem; padding: 1px 6px; border-radius: 99px; font-family: 'DM Mono', monospace; }
+  .tab.active { background: var(--accent); color: #111; border-color: var(--accent); }
+  .tab.active .count { background: rgba(0,0,0,0.2); color: #111; }
+  .tab:hover:not(.active) { color: var(--text); border-color: var(--muted); }
+
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; }
+  table { width: 100%; border-collapse: collapse; }
+  thead { background: var(--surface2); }
+  th { padding: 12px 16px; text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-family: 'DM Mono', monospace; font-weight: 500; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 13px 16px; font-size: 0.88rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .mono { font-family: 'DM Mono', monospace; }
+  .status-badge { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 0.72rem; font-weight: 600; font-family: 'DM Mono', monospace; }
+  .badge-paid { background: #1a2e22; color: var(--success); }
+  .badge-pending { background: #2a2200; color: var(--accent); }
+  .badge-overdue { background: #2a1414; color: var(--danger); }
+  .badge-planned { background: #1e1e1e; color: var(--muted); }
+
+  .category-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; }
+  .row-actions { display: flex; gap: 6px; }
+  .icon-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; width: 30px; height: 30px; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .icon-btn:hover { color: var(--text); border-color: var(--muted); }
+  .icon-btn.del:hover { color: var(--danger); border-color: var(--danger); }
+
+  .empty-state { text-align: center; padding: 48px; color: var(--muted); }
+  .empty-state .icon { font-size: 2.5rem; margin-bottom: 12px; }
+  .empty-state p { font-size: 0.88rem; }
+
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 200; align-items: center; justify-content: center; }
+  .overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 28px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; animation: slideUp 0.2s ease; }
+  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 22px; display: flex; justify-content: space-between; align-items: center; }
+  .form-grid { display: grid; gap: 14px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-group label { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; font-family: 'DM Mono', monospace; }
+  .form-group input, .form-group select, .form-group textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--text); font-family: 'Syne', sans-serif; font-size: 0.88rem; outline: none; transition: border-color 0.15s; }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
+  .form-group select option { background: var(--surface2); }
+  .form-group textarea { resize: vertical; min-height: 72px; }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+
+  .cat-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  .cat-item { display: flex; align-items: center; gap: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 0.88rem; }
+  .cat-item .cat-name { flex: 1; }
+  .color-swatch { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+  .cat-total { font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--muted); }
+
+  .notes-area { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+  .notes-area textarea { width: 100%; background: transparent; border: none; color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.85rem; resize: vertical; min-height: 200px; outline: none; line-height: 1.7; }
+
+  .chart-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
+  .chart-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 20px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .bar-chart { display: flex; flex-direction: column; gap: 12px; }
+  .bar-row { display: flex; align-items: center; gap: 12px; }
+  .bar-label { font-size: 0.8rem; width: 140px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-bg { flex: 1; height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 99px; transition: width 0.5s ease; }
+  .bar-val { font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--muted); white-space: nowrap; width: 90px; text-align: right; }
+
+  .section { display: none; }
+  .section.active { display: block; }
+  .top-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+  .section-title { font-size: 1rem; font-weight: 800; }
+
+  /* WYGLĄD SECTION */
+  .appearance-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media(max-width:700px){ .appearance-grid { grid-template-columns: 1fr; } }
+  .appearance-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; }
+  .appearance-card h3 { font-size: 0.85rem; font-weight: 700; margin-bottom: 16px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .color-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .color-row:last-child { border-bottom: none; }
+  .color-row label { font-size: 0.85rem; }
+  .color-row input[type=color] { width: 42px; height: 32px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; background: none; padding: 2px; }
+  .preset-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .preset-btn { width: 32px; height: 32px; border-radius: 8px; border: 2px solid transparent; cursor: pointer; transition: all 0.15s; }
+  .preset-btn:hover, .preset-btn.active { border-color: var(--text); transform: scale(1.1); }
+  .logo-preview { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: center; margin-bottom: 14px; font-size: 1.3rem; font-weight: 800; }
+  .radius-slider { width: 100%; accent-color: var(--accent); }
+
+  /* GOOGLE DRIVE SECTION */
+  .drive-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; }
+  .drive-card h3 { font-size: 0.85rem; font-weight: 700; margin-bottom: 6px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .drive-card p { font-size: 0.85rem; color: var(--muted); margin-bottom: 16px; line-height: 1.6; }
+  .drive-status-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .drive-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .sync-log { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--muted); max-height: 140px; overflow-y: auto; line-height: 1.8; }
+  .sync-log .log-ok { color: var(--success); }
+  .sync-log .log-err { color: var(--danger); }
+  .sync-log .log-info { color: var(--accent); }
+  .auto-sync-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 0.85rem; }
+  .toggle { position: relative; width: 40px; height: 22px; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 99px; cursor: pointer; transition: 0.2s; }
+  .toggle-slider:before { content:''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: var(--muted); border-radius: 50%; transition: 0.2s; }
+  .toggle input:checked + .toggle-slider { background: var(--accent); }
+  .toggle input:checked + .toggle-slider:before { transform: translateX(18px); background: #111; }
+  .setup-steps { counter-reset: steps; display: flex; flex-direction: column; gap: 10px; }
+  .setup-step { display: flex; gap: 12px; align-items: flex-start; font-size: 0.85rem; line-height: 1.5; }
+  .setup-step-num { background: var(--accent); color: #111; font-weight: 800; font-size: 0.75rem; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .setup-step a { color: var(--accent); }
+  .input-copy { display: flex; gap: 6px; }
+  .input-copy input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.8rem; outline: none; }
+  .input-copy input:focus { border-color: var(--accent); }
+
+  #toast { position: fixed; bottom: 24px; right: 24px; background: var(--accent); color: #111; font-weight: 700; padding: 12px 20px; border-radius: var(--radius); font-size: 0.85rem; transform: translateY(80px); opacity: 0; transition: all 0.3s; z-index: 999; pointer-events: none; }
+  #toast.show { transform: translateY(0); opacity: 1; }
+
+  @media (max-width: 700px) {
+    header { padding: 14px 16px; }
+    .container { padding: 20px 12px; }
+    .form-row { grid-template-columns: 1fr; }
+    td, th { padding: 10px 10px; }
+    .bar-label { width: 90px; font-size: 0.72rem; }
+    .bar-val { width: 70px; font-size: 0.7rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" style="display:none;position:fixed;inset:0;background:#0f0f0f;z-index:9999;align-items:center;justify-content:center;flex-direction:column">
+  <div style="background:#1a1a1a;border:1px solid #2e2e2e;border-radius:16px;padding:40px 36px;width:100%;max-width:360px;text-align:center">
+    <div id="loginLogo" style="font-size:2rem;margin-bottom:8px">🏗️</div>
+    <div style="font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;margin-bottom:4px" id="loginTitle">Kosztorys Budowy</div>
+    <div style="font-size:0.8rem;color:#888;margin-bottom:28px;font-family:'DM Mono',monospace">Wpisz hasło aby kontynuować</div>
+    <input id="loginInput" type="password" placeholder="Hasło..." style="width:100%;background:#242424;border:1px solid #2e2e2e;border-radius:10px;padding:13px 16px;color:#f0ede8;font-family:'Syne',sans-serif;font-size:1rem;outline:none;text-align:center;letter-spacing:3px;margin-bottom:12px;transition:border-color 0.15s" onfocus="this.style.borderColor='#e8c547'" onblur="this.style.borderColor='#2e2e2e'">
+    <div id="loginError" style="display:none;color:#e05555;font-size:0.8rem;margin-bottom:12px;font-family:'DM Mono',monospace">❌ Nieprawidłowe hasło</div>
+    <button onclick="tryLogin()" style="width:100%;background:#e8c547;color:#111;border:none;border-radius:10px;padding:13px;font-family:'Syne',sans-serif;font-weight:800;font-size:0.95rem;cursor:pointer">Wejdź →</button>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+
+<header>
+  <div class="logo">
+    <span class="logo-icon" id="headerIcon">🏗️</span>
+    <span class="logo-text" id="headerLogoText">Budowa<span id="headerDot">.</span></span>
+  </div>
+  <div class="header-actions">
+    <div class="sync-status" id="syncStatus">
+      <div class="sync-dot" id="syncDot"></div>
+      <span id="syncLabel">Nie połączono</span>
+    </div>
+    <button class="btn btn-success" id="btnSyncDrive" onclick="manualSync()" style="display:none">☁️ Synchronizuj</button>
+    <button class="btn btn-ghost" onclick="exportData()">📤 Eksport</button>
+    <label class="btn btn-ghost" style="cursor:pointer">📥 Import<input type="file" accept=".json" onchange="importData(event)" style="display:none"></label>
+    <button class="btn btn-primary" onclick="openAddModal()">+ Dodaj koszt</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="summary-grid" id="summaryGrid"></div>
+
+  <div class="progress-wrap">
+    <div class="progress-header">
+      <span style="font-weight:700">Realizacja budżetu</span>
+      <span class="mono" id="progressPct">0%</span>
+    </div>
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('koszty',this)">💰 Koszty <span class="count" id="tab-count-koszty">0</span></button>
+    <button class="tab" onclick="switchTab('wykres',this)">📊 Wykres</button>
+    <button class="tab" onclick="switchTab('kategorie',this)">🏷️ Kategorie</button>
+    <button class="tab" onclick="switchTab('notatki',this)">📝 Notatki</button>
+    <button class="tab" onclick="switchTab('drive',this)">☁️ Google Drive</button>
+    <button class="tab" onclick="switchTab('wyglad',this)">🎨 Wygląd</button>
+  </div>
+
+  <!-- KOSZTY -->
+  <div class="section active" id="section-koszty">
+    <div class="top-row">
+      <span class="section-title">Lista wydatków</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select id="filterStatus" onchange="renderTable()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-family:'Syne',sans-serif;font-size:0.82rem;">
+          <option value="">Wszystkie statusy</option>
+          <option value="zapłacone">Zapłacone</option>
+          <option value="oczekujące">Oczekujące</option>
+          <option value="zaległe">Zaległe</option>
+          <option value="planowane">Planowane</option>
+        </select>
+        <select id="filterCat" onchange="renderTable()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-family:'Syne',sans-serif;font-size:0.82rem;">
+          <option value="">Wszystkie kategorie</option>
+        </select>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Nazwa</th><th>Kategoria</th><th>Kwota</th><th>Data</th><th>Status</th><th>Dostawca</th><th></th></tr></thead>
+        <tbody id="costTableBody"></tbody>
+      </table>
+      <div id="emptyState" class="empty-state" style="display:none">
+        <div class="icon">🧱</div>
+        <p>Brak kosztów. Kliknij <strong>+ Dodaj koszt</strong> aby zacząć.</p>
+      </div>
+    </div>
+    <div style="font-size:0.8rem;color:var(--muted);text-align:right" id="tableFooter"></div>
+  </div>
+
+  <!-- WYKRES -->
+  <div class="section" id="section-wykres">
+    <div class="chart-wrap">
+      <div class="chart-title">Wydatki wg kategorii</div>
+      <div class="bar-chart" id="barChart"></div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-title">Wydatki wg statusu</div>
+      <div class="bar-chart" id="barChartStatus"></div>
+    </div>
+  </div>
+
+  <!-- KATEGORIE -->
+  <div class="section" id="section-kategorie">
+    <div class="top-row">
+      <span class="section-title">Kategorie</span>
+      <button class="btn btn-primary" onclick="openCatModal()">+ Nowa kategoria</button>
+    </div>
+    <div class="cat-list" id="catList"></div>
+  </div>
+
+  <!-- NOTATKI -->
+  <div class="section" id="section-notatki">
+    <div class="top-row">
+      <span class="section-title">Notatki i dziennik budowy</span>
+      <button class="btn btn-primary" onclick="saveNotes()">💾 Zapisz</button>
+    </div>
+    <div class="notes-area">
+      <textarea id="notesArea" placeholder="Wpisz notatki, dziennik budowy, kontakty, przypomnienia..."></textarea>
+    </div>
+  </div>
+
+  <!-- GOOGLE DRIVE -->
+  <div class="section" id="section-drive">
+    <div class="top-row"><span class="section-title">Google Drive — Synchronizacja</span></div>
+
+    <div class="drive-card" id="driveSetupCard">
+      <h3>⚙️ Konfiguracja (jednorazowa)</h3>
+      <p>Aby synchronizować dane z Google Drive, potrzebujesz klucza API. Poniżej instrukcja krok po kroku — to jednorazowe ustawienie.</p>
+      <div class="setup-steps">
+        <div class="setup-step"><div class="setup-step-num">1</div><div>Wejdź na <a href="https://console.cloud.google.com/" target="_blank">console.cloud.google.com</a> i zaloguj się kontem Google.</div></div>
+        <div class="setup-step"><div class="setup-step-num">2</div><div>Utwórz nowy projekt (np. <em>budowa-kosztorys</em>), następnie w menu wybierz <strong>APIs & Services → Library</strong> i włącz <strong>Google Drive API</strong>.</div></div>
+        <div class="setup-step"><div class="setup-step-num">3</div><div>Przejdź do <strong>APIs & Services → OAuth consent screen</strong> → wybierz <strong>External</strong> → wypełnij nazwę aplikacji → dodaj swój email jako Test user.</div></div>
+        <div class="setup-step"><div class="setup-step-num">4</div><div>Przejdź do <strong>APIs & Services → Credentials → Create Credentials → OAuth client ID</strong> → typ: <strong>Web application</strong>. W polu <em>Authorized JavaScript origins</em> wpisz adres tej strony (np. <code>https://twoja-strona.pages.dev</code> lub <code>http://localhost</code> jeśli lokalnie).</div></div>
+        <div class="setup-step"><div class="setup-step-num">5</div><div>Skopiuj <strong>Client ID</strong> i wklej poniżej:</div></div>
+      </div>
+      <div style="margin-top:16px">
+        <div class="form-group">
+          <label>Google OAuth Client ID</label>
+          <div class="input-copy">
+            <input type="text" id="clientIdInput" placeholder="123456789-abc...apps.googleusercontent.com">
+            <button class="btn btn-primary" onclick="saveClientId()">Zapisz</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="drive-card">
+      <h3>☁️ Status połączenia</h3>
+      <div class="drive-status-row">
+        <div class="sync-status" style="font-size:0.85rem">
+          <div class="sync-dot" id="driveStatusDot"></div>
+          <span id="driveStatusLabel">Nie połączono z Google Drive</span>
+        </div>
+        <button class="btn btn-success" id="btnConnect" onclick="connectDrive()">🔗 Połącz z Google</button>
+        <button class="btn btn-danger" id="btnDisconnect" onclick="disconnectDrive()" style="display:none">Rozłącz</button>
+      </div>
+      <div class="drive-actions">
+        <button class="btn btn-ghost" onclick="manualSync()" id="btnSyncUp">☁️ Zapisz na Drive</button>
+        <button class="btn btn-ghost" onclick="loadFromDrive()" id="btnSyncDown">📥 Wczytaj z Drive</button>
+      </div>
+      <div class="auto-sync-row">
+        <label class="toggle">
+          <input type="checkbox" id="autoSyncToggle" onchange="toggleAutoSync()">
+          <div class="toggle-slider"></div>
+        </label>
+        <span>Auto-synchronizacja co 5 minut</span>
+        <span id="lastSyncTime" style="margin-left:auto;font-size:0.75rem;color:var(--muted);font-family:'DM Mono',monospace"></span>
+      </div>
+    </div>
+
+    <div class="drive-card">
+      <h3>📋 Logi synchronizacji</h3>
+      <div class="sync-log" id="syncLog"><span style="color:var(--muted)">Brak aktywności...</span></div>
+    </div>
+  </div>
+
+  <!-- WYGLĄD -->
+  <div class="section" id="section-wyglad">
+    <div class="top-row">
+      <span class="section-title">Personalizacja wyglądu</span>
+      <button class="btn btn-primary" onclick="applyAppearance()">✓ Zastosuj</button>
+    </div>
+
+    <div class="appearance-grid">
+
+      <div class="appearance-card">
+        <h3>🎨 Kolory</h3>
+        <div class="color-row">
+          <label>Kolor akcentu</label>
+          <input type="color" id="ap_accent" value="#e8c547" oninput="previewAccent(this.value)">
+        </div>
+        <div class="color-row">
+          <label>Tło strony</label>
+          <input type="color" id="ap_bg" value="#0f0f0f" oninput="previewColor('--bg',this.value)">
+        </div>
+        <div class="color-row">
+          <label>Kolor kart</label>
+          <input type="color" id="ap_surface" value="#1a1a1a" oninput="previewColor('--surface',this.value)">
+        </div>
+        <div class="color-row">
+          <label>Kolor tekstu</label>
+          <input type="color" id="ap_text" value="#f0ede8" oninput="previewColor('--text',this.value)">
+        </div>
+        <div style="margin-top:14px">
+          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace">Gotowe motywy</div>
+          <div class="preset-row" id="presetRow"></div>
+        </div>
+      </div>
+
+      <div class="appearance-card">
+        <h3>🏷️ Logo i nagłówek</h3>
+        <div class="logo-preview" id="logoPreview">🏗️ Budowa<span style="color:var(--accent)">.</span></div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label>Emoji / ikona</label>
+          <input type="text" id="ap_icon" value="🏗️" maxlength="4" oninput="updateLogoPreview()">
+        </div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label>Nazwa projektu</label>
+          <input type="text" id="ap_logoText" value="Budowa" oninput="updateLogoPreview()">
+        </div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label>Znak po nazwie</label>
+          <input type="text" id="ap_logoDot" value="." maxlength="3" oninput="updateLogoPreview()">
+        </div>
+        <div class="form-group">
+          <label>Zaokrąglenie kart (px)</label>
+          <input type="range" class="radius-slider" id="ap_radius" min="0" max="24" value="10" oninput="previewColor('--radius',this.value+'px');document.getElementById('ap_radius_val').textContent=this.value+'px'">
+          <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;font-family:'DM Mono',monospace" id="ap_radius_val">10px</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /container -->
+</div><!-- /app -->
+
+<!-- MODALS -->
+<div class="overlay" id="costModal">
+  <div class="modal">
+    <div class="modal-title"><span id="modalTitle">Dodaj koszt</span><button class="icon-btn" onclick="closeModal('costModal')">✕</button></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Nazwa *</label><input type="text" id="f_name" placeholder="np. Beton fundamenty"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Kwota (PLN) *</label><input type="number" id="f_amount" placeholder="0.00" min="0" step="0.01"></div>
+        <div class="form-group"><label>Kategoria *</label><select id="f_cat"></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Data</label><input type="date" id="f_date"></div>
+        <div class="form-group"><label>Status</label>
+          <select id="f_status">
+            <option value="zapłacone">Zapłacone</option>
+            <option value="oczekujące">Oczekujące</option>
+            <option value="zaległe">Zaległe</option>
+            <option value="planowane">Planowane</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label>Dostawca / Wykonawca</label><input type="text" id="f_vendor" placeholder="np. FirmaBudowlana Sp. z o.o."></div>
+      <div class="form-group"><label>Numer faktury / uwagi</label><textarea id="f_notes" placeholder="FV/2024/001..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('costModal')">Anuluj</button>
+      <button class="btn btn-primary" onclick="saveCost()">Zapisz</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="budgetModal">
+  <div class="modal">
+    <div class="modal-title"><span>Ustaw budżet</span><button class="icon-btn" onclick="closeModal('budgetModal')">✕</button></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Całkowity budżet budowy (PLN)</label><input type="number" id="budgetInput" placeholder="500000" min="0" step="1000"></div>
+      <div class="form-group"><label>Nazwa projektu / adres</label><input type="text" id="projectNameInput" placeholder="np. Dom jednorodzinny, ul. Kwiatowa 5"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('budgetModal')">Anuluj</button>
+      <button class="btn btn-primary" onclick="saveBudget()">Zapisz</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="catModal">
+  <div class="modal">
+    <div class="modal-title"><span>Nowa kategoria</span><button class="icon-btn" onclick="closeModal('catModal')">✕</button></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Nazwa kategorii</label><input type="text" id="catNameInput" placeholder="np. Instalacje elektryczne"></div>
+      <div class="form-group"><label>Kolor</label><input type="color" id="catColorInput" value="#e8c547" style="height:44px;cursor:pointer;border-radius:8px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('catModal')">Anuluj</button>
+      <button class="btn btn-primary" onclick="saveCategory()">Dodaj</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast">✓ Zapisano</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let state = {
+  budget: 500000,
+  projectName: 'Moja Budowa 2024',
+  costs: [],
+  categories: [
+    { id: 'c1', name: 'Fundamenty', color: '#e8c547' },
+    { id: 'c2', name: 'Ściany i konstrukcja', color: '#5aad7a' },
+    { id: 'c3', name: 'Dach', color: '#5b9bd5' },
+    { id: 'c4', name: 'Instalacje', color: '#e07755' },
+    { id: 'c5', name: 'Wykończenie', color: '#b47be8' },
+    { id: 'c6', name: 'Okna i drzwi', color: '#e85555' },
+    { id: 'c7', name: 'Inne', color: '#888' },
+  ],
+  notes: '',
+  appearance: {
+    accent: '#e8c547', bg: '#0f0f0f', surface: '#1a1a1a', text: '#f0ede8',
+    radius: 10, icon: '🏗️', logoText: 'Budowa', logoDot: '.'
+  }
+};
+let editingId = null;
+
+// ═══════════════════════════════════════════════
+// PERSISTENCE
+// ═══════════════════════════════════════════════
+function save() { localStorage.setItem('budowa_state', JSON.stringify(state)); }
+function load() {
+  try {
+    const s = localStorage.getItem('budowa_state');
+    if (s) {
+      const parsed = JSON.parse(s);
+      state = { ...state, ...parsed };
+      if (!state.appearance) state.appearance = { accent:'#e8c547', bg:'#0f0f0f', surface:'#1a1a1a', text:'#f0ede8', radius:10, icon:'🏗️', logoText:'Budowa', logoDot:'.' };
+    }
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════
+function fmt(n) { return Number(n||0).toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2})+' zł'; }
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2); }
+function getCat(id) { return state.categories.find(c=>c.id===id)||{name:'—',color:'#888'}; }
+function showToast(msg='✓ Zapisano') {
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+function addLog(msg, type='info') {
+  const log = document.getElementById('syncLog');
+  const now = new Date().toLocaleTimeString('pl-PL');
+  const cls = type==='ok'?'log-ok':type==='err'?'log-err':'log-info';
+  const prev = log.innerHTML === '<span style="color:var(--muted)">Brak aktywności...</span>' ? '' : log.innerHTML;
+  log.innerHTML = prev + `<div class="${cls}">[${now}] ${msg}</div>`;
+  log.scrollTop = log.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════
+// APPEARANCE
+// ═══════════════════════════════════════════════
+const PRESETS = [
+  { name:'Złoty', accent:'#e8c547', bg:'#0f0f0f', surface:'#1a1a1a', text:'#f0ede8' },
+  { name:'Niebieski', accent:'#5b9bd5', bg:'#0a0f1a', surface:'#111827', text:'#e8f0fe' },
+  { name:'Zielony', accent:'#5aad7a', bg:'#0a120e', surface:'#111a14', text:'#e8f5ec' },
+  { name:'Różowy', accent:'#e85599', bg:'#0f0a10', surface:'#1a1020', text:'#f5e8f0' },
+  { name:'Jasny', accent:'#c9a227', bg:'#f5f5f0', surface:'#ffffff', text:'#1a1a1a' },
+  { name:'Szary', accent:'#aaaaaa', bg:'#111111', surface:'#1e1e1e', text:'#dddddd' },
+];
+
+function renderPresets() {
+  const row = document.getElementById('presetRow');
+  row.innerHTML = PRESETS.map((p,i) => `
+    <button class="preset-btn" title="${p.name}" style="background:${p.accent};border-color:${p.accent==(state.appearance?.accent||'#e8c547')?'white':'transparent'}" onclick="applyPreset(${i})"></button>
+  `).join('');
+}
+
+function applyPreset(i) {
+  const p = PRESETS[i];
+  document.getElementById('ap_accent').value = p.accent;
+  document.getElementById('ap_bg').value = p.bg;
+  document.getElementById('ap_surface').value = p.surface;
+  document.getElementById('ap_text').value = p.text;
+  previewAccent(p.accent);
+  previewColor('--bg', p.bg);
+  previewColor('--surface', p.surface);
+  previewColor('--text', p.text);
+  // update surface2 and border automatically
+  document.documentElement.style.setProperty('--surface2', adjustBrightness(p.surface, 10));
+  document.documentElement.style.setProperty('--border', adjustBrightness(p.surface, 20));
+}
+
+function adjustBrightness(hex, amt) {
+  const num = parseInt(hex.replace('#',''), 16);
+  const r = Math.min(255, Math.max(0, (num>>16)+amt));
+  const g = Math.min(255, Math.max(0, ((num>>8)&0xff)+amt));
+  const b = Math.min(255, Math.max(0, (num&0xff)+amt));
+  return '#'+((r<<16)|(g<<8)|b).toString(16).padStart(6,'0');
+}
+
+function previewColor(varName, val) {
+  document.documentElement.style.setProperty(varName, val);
+}
+function previewAccent(val) {
+  document.documentElement.style.setProperty('--accent', val);
+  document.documentElement.style.setProperty('--accent2', adjustBrightness(val, -30));
+}
+function updateLogoPreview() {
+  const icon = document.getElementById('ap_icon').value||'🏗️';
+  const text = document.getElementById('ap_logoText').value||'Budowa';
+  const dot = document.getElementById('ap_logoDot').value||'.';
+  document.getElementById('logoPreview').innerHTML = `${icon} ${text}<span style="color:var(--accent)">${dot}</span>`;
+}
+function applyAppearance() {
+  state.appearance = {
+    accent: document.getElementById('ap_accent').value,
+    bg: document.getElementById('ap_bg').value,
+    surface: document.getElementById('ap_surface').value,
+    text: document.getElementById('ap_text').value,
+    radius: parseInt(document.getElementById('ap_radius').value),
+    icon: document.getElementById('ap_icon').value||'🏗️',
+    logoText: document.getElementById('ap_logoText').value||'Budowa',
+    logoDot: document.getElementById('ap_logoDot').value||'.',
+  };
+  save();
+  applyStoredAppearance();
+  renderHeader();
+  showToast('🎨 Wygląd zastosowany');
+}
+function applyStoredAppearance() {
+  const a = state.appearance;
+  if (!a) return;
+  document.documentElement.style.setProperty('--accent', a.accent);
+  document.documentElement.style.setProperty('--accent2', adjustBrightness(a.accent, -30));
+  document.documentElement.style.setProperty('--bg', a.bg);
+  document.documentElement.style.setProperty('--surface', a.surface);
+  document.documentElement.style.setProperty('--surface2', adjustBrightness(a.surface, 10));
+  document.documentElement.style.setProperty('--border', adjustBrightness(a.surface, 20));
+  document.documentElement.style.setProperty('--text', a.text);
+  document.documentElement.style.setProperty('--radius', a.radius+'px');
+}
+function loadAppearanceInputs() {
+  const a = state.appearance;
+  document.getElementById('ap_accent').value = a.accent||'#e8c547';
+  document.getElementById('ap_bg').value = a.bg||'#0f0f0f';
+  document.getElementById('ap_surface').value = a.surface||'#1a1a1a';
+  document.getElementById('ap_text').value = a.text||'#f0ede8';
+  document.getElementById('ap_radius').value = a.radius||10;
+  document.getElementById('ap_radius_val').textContent = (a.radius||10)+'px';
+  document.getElementById('ap_icon').value = a.icon||'🏗️';
+  document.getElementById('ap_logoText').value = a.logoText||'Budowa';
+  document.getElementById('ap_logoDot').value = a.logoDot||'.';
+  updateLogoPreview();
+  renderPresets();
+}
+function renderHeader() {
+  const a = state.appearance;
+  document.getElementById('headerIcon').textContent = a.icon||'🏗️';
+  document.getElementById('headerLogoText').innerHTML = (a.logoText||'Budowa')+'<span id="headerDot" style="color:var(--accent)">'+(a.logoDot||'.')+'</span>';
+  document.title = (a.logoText||'Budowa')+' — Kosztorys';
+  // update login screen too
+  document.getElementById('loginLogo').textContent = a.icon||'🏗️';
+  document.getElementById('loginTitle').textContent = (a.logoText||'Budowa')+' — Kosztorys';
+}
+
+// ═══════════════════════════════════════════════
+// GOOGLE DRIVE
+// ═══════════════════════════════════════════════
+const DRIVE_FILE_NAME = 'budowa_kosztorys_data.json';
+let driveConnected = false;
+let accessToken = null;
+let autoSyncInterval = null;
+let gapiLoaded = false;
+
+function saveClientId() {
+  const id = document.getElementById('clientIdInput').value.trim();
+  if (!id) { alert('Wklej Client ID'); return; }
+  localStorage.setItem('budowa_client_id', id);
+  showToast('✓ Client ID zapisany');
+  addLog('Client ID zapisany. Kliknij "Połącz z Google".', 'info');
+  initGoogleAuth();
+}
+
+function initGoogleAuth() {
+  const clientId = localStorage.getItem('budowa_client_id');
+  if (!clientId) return;
+  document.getElementById('clientIdInput').value = clientId;
+
+  if (!window.google) {
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.onload = () => { gapiLoaded = true; };
+    document.head.appendChild(script);
+  } else {
+    gapiLoaded = true;
+  }
+}
+
+function connectDrive() {
+  const clientId = localStorage.getItem('budowa_client_id');
+  if (!clientId) {
+    addLog('Najpierw zapisz Client ID w sekcji konfiguracja.', 'err');
+    showToast('❌ Brak Client ID');
+    return;
+  }
+  addLog('Inicjowanie logowania Google...', 'info');
+  setSyncState('syncing', 'Łączenie...');
+
+  const tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file',
+    callback: (resp) => {
+      if (resp.error) {
+        addLog('Błąd logowania: ' + resp.error, 'err');
+        setSyncState('error', 'Błąd połączenia');
+        return;
+      }
+      accessToken = resp.access_token;
+      driveConnected = true;
+      localStorage.setItem('budowa_drive_connected', '1');
+      setSyncState('connected', 'Połączono z Google Drive');
+      updateDriveUI();
+      addLog('Połączono z Google Drive ✓', 'ok');
+      showToast('☁️ Połączono z Drive');
+    }
+  });
+  tokenClient.requestAccessToken();
+}
+
+function disconnectDrive() {
+  accessToken = null;
+  driveConnected = false;
+  localStorage.removeItem('budowa_drive_connected');
+  setSyncState('', 'Nie połączono');
+  updateDriveUI();
+  addLog('Rozłączono z Google Drive.', 'info');
+  showToast('Rozłączono');
+}
+
+function setSyncState(type, label) {
+  const dot = document.getElementById('syncDot');
+  const lbl = document.getElementById('syncLabel');
+  const ddot = document.getElementById('driveStatusDot');
+  const dlbl = document.getElementById('driveStatusLabel');
+  dot.className = 'sync-dot' + (type ? ' ' + type : '');
+  ddot.className = 'sync-dot' + (type ? ' ' + type : '');
+  lbl.textContent = label;
+  dlbl.textContent = label;
+}
+
+function updateDriveUI() {
+  document.getElementById('btnConnect').style.display = driveConnected ? 'none' : '';
+  document.getElementById('btnDisconnect').style.display = driveConnected ? '' : 'none';
+  document.getElementById('btnSyncDrive').style.display = driveConnected ? '' : 'none';
+}
+
+async function findDriveFile() {
+  const resp = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=name='${DRIVE_FILE_NAME}' and trashed=false&spaces=drive`,
+    { headers: { Authorization: 'Bearer ' + accessToken } }
+  );
+  const data = await resp.json();
+  return data.files && data.files.length > 0 ? data.files[0].id : null;
+}
+
+async function manualSync() {
+  if (!driveConnected || !accessToken) {
+    addLog('Nie połączono z Google Drive.', 'err');
+    showToast('❌ Najpierw połącz z Drive');
+    return;
+  }
+  setSyncState('syncing', 'Synchronizacja...');
+  addLog('Zapisywanie danych na Drive...', 'info');
+  try {
+    const content = JSON.stringify(state, null, 2);
+    const fileId = await findDriveFile();
+    let resp;
+    if (fileId) {
+      resp = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+        body: content
+      });
+    } else {
+      const meta = new Blob([JSON.stringify({ name: DRIVE_FILE_NAME })], { type: 'application/json' });
+      const body = new Blob([content], { type: 'application/json' });
+      const form = new FormData();
+      form.append('metadata', meta);
+      form.append('file', body);
+      resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + accessToken },
+        body: form
+      });
+    }
+    if (resp.ok) {
+      const now = new Date().toLocaleTimeString('pl-PL');
+      document.getElementById('lastSyncTime').textContent = 'Ostatnio: ' + now;
+      setSyncState('connected', 'Połączono z Google Drive');
+      addLog('Dane zapisane na Drive ✓', 'ok');
+      showToast('☁️ Zsynchronizowano');
+    } else {
+      throw new Error('HTTP ' + resp.status);
+    }
+  } catch(e) {
+    addLog('Błąd zapisu: ' + e.message, 'err');
+    setSyncState('error', 'Błąd synchronizacji');
+    showToast('❌ Błąd synchronizacji');
+  }
+}
+
+async function loadFromDrive() {
+  if (!driveConnected || !accessToken) {
+    addLog('Nie połączono z Google Drive.', 'err');
+    showToast('❌ Najpierw połącz z Drive');
+    return;
+  }
+  setSyncState('syncing', 'Wczytywanie...');
+  addLog('Wczytywanie danych z Drive...', 'info');
+  try {
+    const fileId = await findDriveFile();
+    if (!fileId) {
+      addLog('Plik nie istnieje na Drive. Użyj "Zapisz na Drive" najpierw.', 'err');
+      setSyncState('connected', 'Połączono z Google Drive');
+      return;
+    }
+    const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+      headers: { Authorization: 'Bearer ' + accessToken }
+    });
+    const data = await resp.json();
+    if (data.costs && data.categories) {
+      state = { ...state, ...data };
+      save();
+      render();
+      applyStoredAppearance();
+      loadAppearanceInputs();
+      setSyncState('connected', 'Połączono z Google Drive');
+      addLog('Dane wczytane z Drive ✓', 'ok');
+      showToast('📥 Dane wczytane z Drive');
+    } else {
+      throw new Error('Nieprawidłowy format pliku');
+    }
+  } catch(e) {
+    addLog('Błąd wczytywania: ' + e.message, 'err');
+    setSyncState('error', 'Błąd wczytywania');
+    showToast('❌ Błąd wczytywania');
+  }
+}
+
+function toggleAutoSync() {
+  const on = document.getElementById('autoSyncToggle').checked;
+  if (on) {
+    autoSyncInterval = setInterval(() => { if(driveConnected) manualSync(); }, 5 * 60 * 1000);
+    addLog('Auto-synchronizacja włączona (co 5 min).', 'info');
+    localStorage.setItem('budowa_autosync', '1');
+  } else {
+    clearInterval(autoSyncInterval);
+    addLog('Auto-synchronizacja wyłączona.', 'info');
+    localStorage.removeItem('budowa_autosync');
+  }
+}
+
+// ═══════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════
+function render() {
+  renderSummary();
+  renderTable();
+  renderCategories();
+  renderCategorySelects();
+  renderNotes();
+  updateTabCounts();
+}
+
+function renderSummary() {
+  const total = state.costs.reduce((s,c)=>s+Number(c.amount),0);
+  const paid = state.costs.filter(c=>c.status==='zapłacone').reduce((s,c)=>s+Number(c.amount),0);
+  const remaining = state.budget - total;
+  document.getElementById('summaryGrid').innerHTML = `
+    <div class="card" style="cursor:pointer" onclick="openBudgetModal()">
+      <div class="card-label">📐 Budżet całkowity</div>
+      <div class="card-value accent">${fmt(state.budget)}</div>
+      <div class="card-sub">${state.projectName} · kliknij aby zmienić</div>
+    </div>
+    <div class="card">
+      <div class="card-label">📊 Łączne koszty</div>
+      <div class="card-value">${fmt(total)}</div>
+      <div class="card-sub">${state.costs.length} pozycji</div>
+    </div>
+    <div class="card">
+      <div class="card-label">✅ Zapłacone</div>
+      <div class="card-value success">${fmt(paid)}</div>
+      <div class="card-sub">${state.costs.filter(c=>c.status==='zapłacone').length} faktur</div>
+    </div>
+    <div class="card">
+      <div class="card-label">${remaining>=0?'💼 Pozostały budżet':'⚠️ Przekroczenie'}</div>
+      <div class="card-value ${remaining>=0?'':'danger'}">${fmt(Math.abs(remaining))}</div>
+      <div class="card-sub">${remaining>=0?'do wydania':'ponad budżet'}</div>
+    </div>`;
+  const total2 = state.costs.reduce((s,c)=>s+Number(c.amount),0);
+  const pct = state.budget>0?Math.min(100,(total2/state.budget)*100):0;
+  document.getElementById('progressFill').style.width = pct+'%';
+  document.getElementById('progressPct').textContent = pct.toFixed(1)+'%';
+}
+
+function statusBadge(s) {
+  const map={zapłacone:'badge-paid',oczekujące:'badge-pending',zaległe:'badge-overdue',planowane:'badge-planned'};
+  return `<span class="status-badge ${map[s]||'badge-planned'}">${s}</span>`;
+}
+
+function renderTable() {
+  const fs = document.getElementById('filterStatus').value;
+  const fc = document.getElementById('filterCat').value;
+  let items = [...state.costs];
+  if (fs) items = items.filter(c=>c.status===fs);
+  if (fc) items = items.filter(c=>c.catId===fc);
+  items.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const tbody = document.getElementById('costTableBody');
+  const empty = document.getElementById('emptyState');
+  const footer = document.getElementById('tableFooter');
+  if (items.length===0) { tbody.innerHTML=''; empty.style.display='block'; footer.textContent=''; return; }
+  empty.style.display='none';
+  footer.textContent=`Suma filtrowanych: ${fmt(items.reduce((s,c)=>s+Number(c.amount),0))} (${items.length} pozycji)`;
+  tbody.innerHTML = items.map(c=>{
+    const cat=getCat(c.catId);
+    return `<tr>
+      <td><span style="font-weight:600">${c.name}</span>${c.notes?`<br><small style="color:var(--muted);font-size:0.72rem">${c.notes}</small>`:''}
+      </td>
+      <td><span style="display:flex;align-items:center"><span class="category-dot" style="background:${cat.color}"></span>${cat.name}</span></td>
+      <td class="mono" style="font-weight:700">${fmt(c.amount)}</td>
+      <td class="mono" style="color:var(--muted);font-size:0.82rem">${c.date||'—'}</td>
+      <td>${statusBadge(c.status)}</td>
+      <td style="color:var(--muted);font-size:0.82rem">${c.vendor||'—'}</td>
+      <td><div class="row-actions">
+        <button class="icon-btn" onclick="editCost('${c.id}')">✏️</button>
+        <button class="icon-btn del" onclick="deleteCost('${c.id}')">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderCharts() {
+  const catTotals={};
+  state.costs.forEach(c=>{ catTotals[c.catId]=(catTotals[c.catId]||0)+Number(c.amount); });
+  const maxCat=Math.max(...Object.values(catTotals),1);
+  const bc=document.getElementById('barChart');
+  if(!Object.keys(catTotals).length){bc.innerHTML='<p style="color:var(--muted);font-size:0.85rem">Brak danych</p>';}
+  else{bc.innerHTML=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).map(([id,val])=>{
+    const cat=getCat(id); const pct=(val/maxCat*100).toFixed(1);
+    return `<div class="bar-row"><div class="bar-label"><span class="category-dot" style="background:${cat.color}"></span>${cat.name}</div><div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${cat.color}"></div></div><div class="bar-val">${fmt(val)}</div></div>`;
+  }).join('');}
+  const sc={zapłacone:'#5aad7a',oczekujące:'#e8c547',zaległe:'#e05555',planowane:'#888'};
+  const st={};
+  state.costs.forEach(c=>{ st[c.status]=(st[c.status]||0)+Number(c.amount); });
+  const maxSt=Math.max(...Object.values(st),1);
+  const bs=document.getElementById('barChartStatus');
+  if(!Object.keys(st).length){bs.innerHTML='<p style="color:var(--muted);font-size:0.85rem">Brak danych</p>';}
+  else{bs.innerHTML=Object.entries(st).map(([s,val])=>{
+    const pct=(val/maxSt*100).toFixed(1);
+    return `<div class="bar-row"><div class="bar-label" style="text-transform:capitalize">${s}</div><div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${sc[s]||'#888'}"></div></div><div class="bar-val">${fmt(val)}</div></div>`;
+  }).join('');}
+}
+
+function renderCategories() {
+  const t={};
+  state.costs.forEach(c=>{ t[c.catId]=(t[c.catId]||0)+Number(c.amount); });
+  document.getElementById('catList').innerHTML = state.categories.map(cat=>`
+    <div class="cat-item">
+      <span class="color-swatch" style="background:${cat.color}"></span>
+      <span class="cat-name">${cat.name}</span>
+      <span class="cat-total">${fmt(t[cat.id]||0)}</span>
+      <button class="icon-btn del" onclick="deleteCat('${cat.id}')">🗑</button>
+    </div>`).join('');
+}
+
+function renderCategorySelects() {
+  const opts=state.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  document.getElementById('f_cat').innerHTML=opts;
+  document.getElementById('filterCat').innerHTML=`<option value="">Wszystkie kategorie</option>`+opts;
+}
+
+function renderNotes() { document.getElementById('notesArea').value=state.notes||''; }
+function updateTabCounts() { document.getElementById('tab-count-koszty').textContent=state.costs.length; }
+
+// ═══════════════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════════════
+function openAddModal() {
+  editingId=null;
+  document.getElementById('modalTitle').textContent='Dodaj koszt';
+  document.getElementById('f_name').value='';
+  document.getElementById('f_amount').value='';
+  document.getElementById('f_date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('f_status').value='oczekujące';
+  document.getElementById('f_vendor').value='';
+  document.getElementById('f_notes').value='';
+  renderCategorySelects();
+  document.getElementById('costModal').classList.add('open');
+  document.getElementById('f_name').focus();
+}
+
+function editCost(id) {
+  const c=state.costs.find(x=>x.id===id); if(!c) return;
+  editingId=id;
+  document.getElementById('modalTitle').textContent='Edytuj koszt';
+  renderCategorySelects();
+  document.getElementById('f_name').value=c.name;
+  document.getElementById('f_amount').value=c.amount;
+  document.getElementById('f_cat').value=c.catId;
+  document.getElementById('f_date').value=c.date||'';
+  document.getElementById('f_status').value=c.status;
+  document.getElementById('f_vendor').value=c.vendor||'';
+  document.getElementById('f_notes').value=c.notes||'';
+  document.getElementById('costModal').classList.add('open');
+}
+
+function saveCost() {
+  const name=document.getElementById('f_name').value.trim();
+  const amount=parseFloat(document.getElementById('f_amount').value);
+  const catId=document.getElementById('f_cat').value;
+  const date=document.getElementById('f_date').value;
+  const status=document.getElementById('f_status').value;
+  const vendor=document.getElementById('f_vendor').value.trim();
+  const notes=document.getElementById('f_notes').value.trim();
+  if(!name||isNaN(amount)||amount<0){alert('Podaj nazwę i kwotę.');return;}
+  if(editingId){
+    const idx=state.costs.findIndex(c=>c.id===editingId);
+    if(idx>-1) state.costs[idx]={...state.costs[idx],name,amount,catId,date,status,vendor,notes};
+    showToast('✓ Zaktualizowano');
+  } else {
+    state.costs.push({id:uid(),name,amount,catId,date,status,vendor,notes});
+    showToast('✓ Dodano koszt');
+  }
+  save(); render(); closeModal('costModal');
+}
+
+function deleteCost(id) {
+  if(!confirm('Usunąć ten koszt?')) return;
+  state.costs=state.costs.filter(c=>c.id!==id);
+  save(); render(); showToast('🗑 Usunięto');
+}
+
+function openBudgetModal() {
+  document.getElementById('budgetInput').value=state.budget;
+  document.getElementById('projectNameInput').value=state.projectName;
+  document.getElementById('budgetModal').classList.add('open');
+}
+
+function saveBudget() {
+  const b=parseFloat(document.getElementById('budgetInput').value);
+  const n=document.getElementById('projectNameInput').value.trim();
+  if(!isNaN(b)&&b>=0) state.budget=b;
+  if(n) state.projectName=n;
+  save(); render(); closeModal('budgetModal'); showToast('✓ Budżet zapisany');
+}
+
+function openCatModal() {
+  document.getElementById('catNameInput').value='';
+  document.getElementById('catColorInput').value='#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');
+  document.getElementById('catModal').classList.add('open');
+}
+
+function saveCategory() {
+  const name=document.getElementById('catNameInput').value.trim();
+  const color=document.getElementById('catColorInput').value;
+  if(!name){alert('Podaj nazwę.');return;}
+  state.categories.push({id:uid(),name,color});
+  save(); render(); closeModal('catModal'); showToast('✓ Kategoria dodana');
+}
+
+function deleteCat(id) {
+  if(state.costs.some(c=>c.catId===id)){alert('Nie można usunąć kategorii przypisanej do kosztów.');return;}
+  if(!confirm('Usunąć kategorię?')) return;
+  state.categories=state.categories.filter(c=>c.id!==id);
+  save(); render();
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.overlay').forEach(el=>{
+  el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');});
+});
+
+// ═══════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('section-'+tab).classList.add('active');
+  if(tab==='wykres') renderCharts();
+  if(tab==='wyglad') { loadAppearanceInputs(); renderPresets(); }
+}
+
+// ═══════════════════════════════════════════════
+// NOTES
+// ═══════════════════════════════════════════════
+function saveNotes() {
+  state.notes=document.getElementById('notesArea').value;
+  save(); showToast('✓ Notatki zapisane');
+}
+
+// ═══════════════════════════════════════════════
+// IMPORT / EXPORT
+// ═══════════════════════════════════════════════
+function exportData() {
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`budowa_${new Date().toISOString().slice(0,10)}.json`;
+  a.click(); showToast('📤 Wyeksportowano');
+}
+
+function importData(e) {
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try {
+      const imp=JSON.parse(ev.target.result);
+      if(!imp.costs||!imp.categories) throw new Error();
+      state=imp; save(); render(); applyStoredAppearance(); loadAppearanceInputs();
+      showToast('📥 Zaimportowano dane');
+    } catch { alert('Błąd: nieprawidłowy plik JSON.'); }
+  };
+  reader.readAsText(file); e.target.value='';
+}
+
+// ═══════════════════════════════════════════════
+// KEYBOARD
+// ═══════════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') document.querySelectorAll('.overlay.open').forEach(el=>el.classList.remove('open'));
+});
+
+// ═══════════════════════════════════════════════
+// PASSWORD
+// ═══════════════════════════════════════════════
+// Aktualne hasło: start
+// Aby zmienić: w konsoli przeglądarki (F12) wpisz:
+//   hashPassword('nowe_haslo').then(h => console.log(h))
+// i wklej wynik jako PASSWORD_HASH poniżej
+const PASSWORD_HASH = 'cced28c6dc3f99c2396a5eaad732bf6b28142335892b1cd0e6af6cdb53f5ccfa';
+const SESSION_KEY = 'budowa_auth';
+
+async function hashPassword(pw) {
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(pw));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+function checkAuth() {
+  if(sessionStorage.getItem(SESSION_KEY)==='1'){
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('app').style.display='block';
+    initApp();
+  } else {
+    document.getElementById('loginScreen').style.display='flex';
+    document.getElementById('app').style.display='none';
+    setTimeout(()=>document.getElementById('loginInput').focus(),100);
+  }
+}
+
+async function tryLogin() {
+  const val=document.getElementById('loginInput').value;
+  const hash=await hashPassword(val);
+  if(hash===PASSWORD_HASH){
+    sessionStorage.setItem(SESSION_KEY,'1');
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('app').style.display='block';
+    document.getElementById('loginError').style.display='none';
+    initApp();
+  } else {
+    document.getElementById('loginError').style.display='block';
+    document.getElementById('loginInput').value='';
+    document.getElementById('loginInput').focus();
+  }
+}
+
+document.getElementById('loginInput').addEventListener('keydown',e=>{ if(e.key==='Enter') tryLogin(); });
+
+function initApp() {
+  load();
+  applyStoredAppearance();
+  renderHeader();
+  render();
+  loadAppearanceInputs();
+  renderPresets();
+  initGoogleAuth();
+  // restore auto-sync
+  if(localStorage.getItem('budowa_autosync')==='1'){
+    document.getElementById('autoSyncToggle').checked=true;
+  }
+  updateDriveUI();
+}
+
+checkAuth();
+</script>
+</body>
+</html>
